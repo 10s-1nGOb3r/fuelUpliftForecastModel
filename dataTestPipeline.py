@@ -2,12 +2,16 @@ import pandas as pd
 import numpy as np
 import os
 #from sklearn.preprocessing import OrdinalEncoder
-#import joblib
+import joblib
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 file_path = os.path.join(script_dir,"input","dataTraining.csv")
 file_path2 = os.path.join(script_dir,"input","stationDb.csv")
+file_path3 = os.path.join(script_dir, "output", "unionEncoder.joblib")
+file_path4 = os.path.join(script_dir, "output", "aircraftRegistrationEncoder.joblib")
+file_path5 = os.path.join(script_dir, "output", "datasetForTraining.csv")
 save_at = os.path.join(script_dir,"output","datasetForTesting.csv")
+save_at2 = os.path.join(script_dir,"output","aggregationZfw.csv")
 
 df = pd.read_csv(file_path,sep=",")
 
@@ -64,6 +68,45 @@ df["monthNbr"] = df["dateLocalTime"].dt.month
 df["dayOfWeek"] = df["dateLocalTime"].dt.dayofweek
 df["yearNbr"] = df["dateLocalTime"].dt.year
 
-df.info()
+aircraftRegistrationEncoder = joblib.load(file_path4)
+unionEncoder = joblib.load(file_path3)
+
+try:
+    df["aircraftRegistration"] = aircraftRegistrationEncoder.transform(df["aircraftRegistration"])
+except ValueError:
+    print("⚠️ Warning: New aircraft registration detected! Mapping to default/unknown.")
+    df["aircraftRegistration"] = df["aircraftRegistration"].apply(
+        lambda x: aircraftRegistrationEncoder.transform([x])[0] if x in aircraftRegistrationEncoder.classes_ else -1
+    )
+
+try:
+    df["union"] = unionEncoder.transform(df["union"])
+except ValueError:
+    print("⚠️ Warning: New route detected! Mapping to default/unknown.")
+    df["union"] = df["union"].apply(
+        lambda x: unionEncoder.transform([x])[0] if x in unionEncoder.classes_ else -1
+    )
+
+df3 = pd.read_csv(file_path5,sep=";")
+
+df4 = df3.groupby(["union"]).agg(
+    zfwAverage = ("actualZfw","mean")
+).reset_index()
+df4["zfwAverage"] = df4["zfwAverage"].round(2)
+
+df4_unique = df4[["union", "zfwAverage"]].drop_duplicates(subset=["union"])
+
+df = pd.merge(df, df4_unique,left_on="union",right_on="union",how="left")
+
+df = df.drop(columns=["Actual departure date","Displayed flight number","Actual leg IATA",
+                      "Actual leg ICAO","actualZfw","departureStation",
+                      "arrivalStation","ICAO","TRANSITION HOUR",
+                      "LocalDateTime","dateLocalTime","aircraftType",
+                      "Actual leg ICAO","actualZfw","fuelUpliftVolumeSkybreathe",
+                      "fuelUpliftVolumeSkybreathe"])
+
+df = df.rename(columns={
+    "zfwAverage": "actualZfw"
+})
 
 df.to_csv(save_at,sep=";",index=False)
