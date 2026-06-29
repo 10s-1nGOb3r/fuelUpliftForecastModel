@@ -9,7 +9,8 @@ file_path = os.path.join(script_dir,"input","dataTraining.csv")
 file_path2 = os.path.join(script_dir,"input","stationDb.csv")
 file_path3 = os.path.join(script_dir,"input","dfsAimsDatasetForFuelUpliftML.csv")
 save_at = os.path.join(script_dir,"output","datasetForTraining.csv")
-save_at3 = os.path.join(script_dir, "output", "union_encoder.joblib")
+save_at2 = os.path.join(script_dir, "output", "aircraftRegistrationEncoder.joblib")
+save_at3 = os.path.join(script_dir, "output", "unionEncoder.joblib")
 
 #Well it seems like merging table between AIMS & Skybreathe is lame
 #So alternatively we're gonna banish all the data that has a blank route
@@ -84,17 +85,17 @@ df["monthNbr"] = df["dateLocalTime"].dt.month
 df["dayOfWeek"] = df["dateLocalTime"].dt.dayofweek
 df["yearNbr"] = df["dateLocalTime"].dt.year
 
-encoder = LabelEncoder()
-df["union"] = encoder.fit_transform(df["union"])
-df["aircraftRegistration"] = encoder.fit_transform(df["aircraftRegistration"])
-joblib.dump(encoder, save_at3)
+unionEncoder = LabelEncoder()
+regEncoder = LabelEncoder()
+df["union"] = unionEncoder.fit_transform(df["union"])
+df["aircraftRegistration"] = regEncoder.fit_transform(df["aircraftRegistration"])
+joblib.dump(regEncoder, save_at2)
+joblib.dump(unionEncoder, save_at3)
 
 df = df.drop(columns=["Actual departure date", "Actual leg IATA", "departureStation",
                       "departureStation","arrivalStation","ICAO","Actual leg ICAO",
                       "TRANSITION HOUR","LocalDateTime","Displayed flight number",
                       "stdev","averageUpliftBasedOnUnion","limitRangeFromAverageForUplift",
                       "dateLocalTime","aircraftType","fuelUpliftVolumeSkybreathe"])
-
-df.info()
 
 df.to_csv(save_at,sep=";",index=False)
