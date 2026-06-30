@@ -98,12 +98,25 @@ df4_unique = df4[["union", "zfwAverage"]].drop_duplicates(subset=["union"])
 
 df = pd.merge(df, df4_unique,left_on="union",right_on="union",how="left")
 
+df["zfwAverage"] = df["zfwAverage"].fillna(0)
+
+df5 = df3.groupby(["aircraftRegistration"]).agg(
+    zfwAveragePerAircraftRegistration = ("actualZfw","mean")
+).reset_index()
+df5["zfwAveragePerAircraftRegistration"] = df5["zfwAveragePerAircraftRegistration"].round(2)
+
+df5_unique = df5[["aircraftRegistration", "zfwAveragePerAircraftRegistration"]].drop_duplicates(subset=["aircraftRegistration"])
+
+df = pd.merge(df, df5_unique,left_on="aircraftRegistration",right_on="aircraftRegistration",how="left")
+
+df["zfwAverage"] = np.where(df["zfwAverage"] == 0,df["zfwAveragePerAircraftRegistration"],df["zfwAverage"])
+
 df = df.drop(columns=["Actual departure date","Displayed flight number","Actual leg IATA",
                       "Actual leg ICAO","actualZfw","departureStation",
                       "arrivalStation","ICAO","TRANSITION HOUR",
-                      "LocalDateTime","dateLocalTime","aircraftType",
+                      "LocalDateTime","aircraftType",
                       "Actual leg ICAO","actualZfw","fuelUpliftVolumeSkybreathe",
-                      "fuelUpliftVolumeSkybreathe"])
+                      "fuelUpliftVolumeSkybreathe","zfwAveragePerAircraftRegistration"])
 
 df = df.rename(columns={
     "zfwAverage": "actualZfw"
